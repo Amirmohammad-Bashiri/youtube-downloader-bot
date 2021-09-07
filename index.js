@@ -2,6 +2,7 @@ const path = require("path");
 const fs = require("fs");
 const cp = require("child_process");
 // External modules
+const request = require("request");
 const dotenv = require("dotenv");
 const ytdl = require("ytdl-core");
 const ffmpeg = require("ffmpeg-static");
@@ -42,9 +43,18 @@ bot.on("message", msg => {
         const filePath = path.join(process.cwd(), "downloads", data.filename);
         mergeVideoAndAudio(data.url, filePath, chatId)
           .then(() => {
+            console.log("Uploading...");
             bot.sendMessage(chatId, "Uploading...");
             bot
-              .sendVideo(chatId, filePath, {}, fileOptions)
+              .sendVideo(
+                chatId,
+                filePath,
+                {
+                  caption: `${data.caption}\n\n ID: @uTubeVideoDownloadBot`,
+                  // thumb: data.videoThumb,
+                },
+                fileOptions
+              )
               .then(() => console.log("Uploaded"))
               .catch(err => {
                 bot.sendMessage(
@@ -54,10 +64,25 @@ bot.on("message", msg => {
                 console.log(err);
               })
               .finally(() => {
-                fs.unlinkSync(filePath);
+                const mp4Path = filePath;
+                // const thumbPath = `${filePath.slice(0, -4)}.jpg`;
+
+                if (fs.existsSync(mp4Path)) {
+                  fs.unlinkSync(mp4Path);
+                }
+
+                // if (fs.existsSync(thumbPath)) {
+                //   fs.unlinkSync(thumbPath);
+                // }
               });
           })
-          .catch(err => console.log(err));
+          .catch(err => {
+            console.log(err);
+            bot.sendMessage(
+              chatId,
+              "We are having a issue with uploading the video, Please try again later."
+            );
+          });
       });
     }
   } catch (err) {
@@ -71,12 +96,38 @@ function getVideoDetails(url, chatId) {
   return new Promise((resolve, reject) => {
     ytdl
       .getBasicInfo(url)
-      .then(data =>
-        resolve({ url, filename: `${data.videoDetails.title}_${chatId}.mp4` })
-      )
+      .then(data => {
+        const videoTitle = data.videoDetails.title;
+        // const thumbnails = data.videoDetails.thumbnails;
+        // const thumbPath = path.join(
+        //   process.cwd(),
+        //   "downloads",
+        //   `${videoTitle}_${chatId}${thumbFormat}`
+        // );
+        // downloadThumbnail(
+        //   thumbnails[thumbnails.length - 1].url,
+        //   thumbPath,
+        //   () => {
+        //     console.log("Downloaded Thumbnail");
+        //   }
+        // );
+
+        resolve({
+          url,
+          filename: `${videoTitle}_${chatId}.mp4`,
+          caption: videoTitle,
+          // videoThumb: thumbPath,
+        });
+      })
       .catch(err => reject(err));
   });
 }
+
+// function downloadThumbnail(url, path, cb) {
+//   request.head(url, (err, res, body) => {
+//     request(url).pipe(fs.createWriteStream(path)).on("close", cb);
+//   });
+// }
 
 function mergeVideoAndAudio(url, filename, chatId) {
   return new Promise((resolve, reject) => {
@@ -85,7 +136,7 @@ function mergeVideoAndAudio(url, filename, chatId) {
 
     // Get audio and video streams
     const audio = ytdl(url, { quality: "highestaudio" });
-    const video = ytdl(url, { quality: "136" });
+    const video = ytdl(url, { quality: "highestvideo" });
 
     // Start the ffmpeg child process
     const ffmpegProcess = cp.spawn(

@@ -13,6 +13,7 @@
     "dotenv": "^10.0.0",
     "ffmpeg-static": "^4.4.0",
     "node-telegram-bot-api": "^0.54.0",
+    "request": "^2.88.2",
     "ytdl-core": "^4.9.1"
   }
 }
