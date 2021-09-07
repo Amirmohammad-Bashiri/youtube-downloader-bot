@@ -7,6 +7,8 @@ const dotenv = require("dotenv");
 const ytdl = require("ytdl-core");
 const ffmpeg = require("ffmpeg-static");
 const TelegramBot = require("node-telegram-bot-api");
+
+const removeSpecialChars = require("./utils/removeSpecialChars");
 // Global constants
 dotenv.config({ path: "./config.env" });
 
@@ -40,7 +42,12 @@ bot.on("message", msg => {
       bot.sendMessage(chatId, "Getting video info...");
 
       getVideoDetails(msg.text, chatId).then(data => {
-        const filePath = path.join(process.cwd(), "downloads", data.filename);
+        const filePath = path.join(
+          process.cwd(),
+          "downloads",
+          `${removeSpecialChars(data.filename)}.mp4`
+        );
+
         mergeVideoAndAudio(data.url, filePath, chatId)
           .then(() => {
             console.log("Uploading...");
@@ -70,10 +77,6 @@ bot.on("message", msg => {
                 if (fs.existsSync(mp4Path)) {
                   fs.unlinkSync(mp4Path);
                 }
-
-                // if (fs.existsSync(thumbPath)) {
-                //   fs.unlinkSync(thumbPath);
-                // }
               });
           })
           .catch(err => {
@@ -98,36 +101,16 @@ function getVideoDetails(url, chatId) {
       .getBasicInfo(url)
       .then(data => {
         const videoTitle = data.videoDetails.title;
-        // const thumbnails = data.videoDetails.thumbnails;
-        // const thumbPath = path.join(
-        //   process.cwd(),
-        //   "downloads",
-        //   `${videoTitle}_${chatId}${thumbFormat}`
-        // );
-        // downloadThumbnail(
-        //   thumbnails[thumbnails.length - 1].url,
-        //   thumbPath,
-        //   () => {
-        //     console.log("Downloaded Thumbnail");
-        //   }
-        // );
 
         resolve({
           url,
-          filename: `${videoTitle}_${chatId}.mp4`,
+          filename: `${videoTitle}_${chatId}`,
           caption: videoTitle,
-          // videoThumb: thumbPath,
         });
       })
       .catch(err => reject(err));
   });
 }
-
-// function downloadThumbnail(url, path, cb) {
-//   request.head(url, (err, res, body) => {
-//     request(url).pipe(fs.createWriteStream(path)).on("close", cb);
-//   });
-// }
 
 function mergeVideoAndAudio(url, filename, chatId) {
   return new Promise((resolve, reject) => {
@@ -136,7 +119,7 @@ function mergeVideoAndAudio(url, filename, chatId) {
 
     // Get audio and video streams
     const audio = ytdl(url, { quality: "highestaudio" });
-    const video = ytdl(url, { quality: "highestvideo" });
+    const video = ytdl(url, { quality: "lowestvideo" });
 
     // Start the ffmpeg child process
     const ffmpegProcess = cp.spawn(
