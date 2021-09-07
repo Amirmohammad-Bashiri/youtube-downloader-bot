@@ -37,7 +37,7 @@ bot.on("message", msg => {
     if (msg.text !== "/start") {
       url = new URL(msg.text);
       console.log(chatId);
-      if (!msg.text.startsWith("https://youtu.be")) throw new Error();
+      if (!isValidUrl(msg.text)) throw new Error();
 
       bot.sendMessage(chatId, "Getting video info...");
 
