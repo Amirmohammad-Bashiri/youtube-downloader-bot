@@ -9,6 +9,8 @@ const ffmpeg = require("ffmpeg-static");
 const TelegramBot = require("node-telegram-bot-api");
 
 const removeSpecialChars = require("./utils/removeSpecialChars");
+const isValidUrl = require("./utils/isValidUrl");
+const getThumbnail = require("./utils/getThumbnail");
 // Global constants
 dotenv.config({ path: "./config.env" });
 
@@ -48,6 +50,14 @@ bot.on("message", msg => {
           `${removeSpecialChars(data.filename)}.mp4`
         );
 
+        const thumbFilePath = path.join(
+          process.cwd(),
+          "downloads",
+          `${removeSpecialChars(data.filename)}.jpg`
+        );
+
+        console.log(thumbFilePath);
+
         mergeVideoAndAudio(data.url, filePath, chatId)
           .then(() => {
             console.log("Uploading...");
@@ -58,7 +68,7 @@ bot.on("message", msg => {
                 filePath,
                 {
                   caption: `${data.caption}\n\n ID: @uTubeVideoDownloadBot`,
-                  // thumb: data.videoThumb,
+                  thumb: thumbFilePath,
                 },
                 fileOptions
               )
@@ -71,12 +81,8 @@ bot.on("message", msg => {
                 console.log(err);
               })
               .finally(() => {
-                const mp4Path = filePath;
-                // const thumbPath = `${filePath.slice(0, -4)}.jpg`;
-
-                if (fs.existsSync(mp4Path)) {
-                  fs.unlinkSync(mp4Path);
-                }
+                fs.unlinkSync(filePath);
+                fs.unlinkSync(thumbFilePath);
               });
           })
           .catch(err => {
@@ -100,12 +106,22 @@ function getVideoDetails(url, chatId) {
     ytdl
       .getBasicInfo(url)
       .then(data => {
-        const videoTitle = data.videoDetails.title;
+        const filename = `${data.videoDetails.title}_${chatId}`;
+        const caption = data.videoDetails.title;
+        const thumbnails = data.videoDetails.thumbnails;
+        const thumbUrl = thumbnails[thumbnails.length - 1];
+        const thumbFilePath = path.join(
+          process.cwd(),
+          "downloads",
+          `${removeSpecialChars(filename)}.jpg`
+        );
+
+        getThumbnail(thumbUrl, thumbFilePath);
 
         resolve({
           url,
-          filename: `${videoTitle}_${chatId}`,
-          caption: videoTitle,
+          filename,
+          caption,
         });
       })
       .catch(err => reject(err));
