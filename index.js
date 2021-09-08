@@ -135,7 +135,7 @@ function mergeVideoAndAudio(url, filename, chatId) {
 
     // Get audio and video streams
     const audio = ytdl(url, { quality: "highestaudio" });
-    const video = ytdl(url, { quality: "lowestvideo" });
+    const video = ytdl(url, { quality: "highestvideo" });
 
     // Start the ffmpeg child process
     const ffmpegProcess = cp.spawn(
